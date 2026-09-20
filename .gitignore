@@ -1,0 +1,7 @@
+.DS_Store
+/dist/
+/github-release/
+/server/spade-rendezvous
+*.exe
+*.test
+*.out
