@@ -29,17 +29,34 @@ func New(ttl time.Duration) *Registry {
 	return &Registry{slots: make(map[string]*Slot), ttl: ttl}
 }
 
-// Upsert registers s under s.Keys (and legacy single-key via Keys[0]).
-func (r *Registry) Upsert(s *Slot) {
+// Upsert registers s under s.Keys. Returns false if any key is already held by
+// a different live connection — refuse silent takeover (A1). Expired slots are
+// swept out of the way. Re-registering the same Conn is allowed (key refresh).
+func (r *Registry) Upsert(s *Slot) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if len(s.Keys) == 0 {
-		return
+		return false
 	}
-	s.ExpiresAt = time.Now().Add(r.ttl)
+	now := time.Now()
+	for _, k := range s.Keys {
+		cur, ok := r.slots[k]
+		if !ok {
+			continue
+		}
+		if now.After(cur.ExpiresAt) {
+			r.deleteSlotLocked(cur)
+			continue
+		}
+		if cur.Conn != s.Conn {
+			return false
+		}
+	}
+	s.ExpiresAt = now.Add(r.ttl)
 	for _, k := range s.Keys {
 		r.slots[k] = s
 	}
+	return true
 }
 
 func (r *Registry) Touch(key string) bool {

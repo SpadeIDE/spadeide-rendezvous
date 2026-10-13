@@ -22,6 +22,9 @@ func FuzzParseControlMessage(f *testing.F) {
 			t.Fatal("nil msg without error")
 		}
 		_, _ = msg["t"]
-		_ = parseRIDs(msg)
+		var hello HelloMsg
+		if DecodeControl(raw, &hello) == nil {
+			_ = collectRIDs(hello)
+		}
 	})
 }

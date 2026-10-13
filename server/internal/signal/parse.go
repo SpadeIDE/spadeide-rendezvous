@@ -3,18 +3,14 @@ package signal
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/spadeide/spade-rendezvous/internal/wsutil"
 )
 
-// ParseControlMessage unmarshals one introducer JSON frame. Rejects oversized
-// payloads even when the caller forgot SetReadLimit (defense in depth).
+// ParseControlMessage unmarshals one introducer JSON frame into a generic
+// envelope. Prefer DecodeControl into typed structs (messages.go) in handlers.
+// Kept for fuzz and tolerant map-shaped inspection.
 func ParseControlMessage(raw []byte) (envelope, error) {
-	if len(raw) == 0 {
-		return nil, fmt.Errorf("empty")
-	}
-	if int64(len(raw)) > wsutil.MaxControlMessage {
-		return nil, fmt.Errorf("too large")
+	if err := checkControlRaw(raw); err != nil {
+		return nil, err
 	}
 	var msg envelope
 	if err := json.Unmarshal(raw, &msg); err != nil {

@@ -38,6 +38,9 @@ cd spade-rendezvous-linux-amd64
 sudo ./install.sh
 sudo nano /etc/spade-rendezvous/env   # SPADE_RV_DOMAIN + ACME email
 sudo systemctl enable --now spade-rendezvous
+
+# later upgrades (keeps env + ACME cache):
+sudo ./reinstall.sh
 ```
 
 Local smoke (no ACME):

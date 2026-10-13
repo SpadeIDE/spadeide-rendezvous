@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
 	"github.com/spadeide/spade-rendezvous/internal/wsutil"
 )
 
@@ -72,6 +73,10 @@ func (h *Hub) Arrive(sid, role string, conn *websocket.Conn) {
 
 		close(existing.paired)
 		log.Printf("relay: paired sid=%s", sid)
+		// Both sides are attached — start the byte pump. Nested TLS is written
+		// by agent/iPad after they see the WSS open; with offer-ack-before-reflex
+		// the agent usually dials within a few hundred ms. A text "paired" frame
+		// was tried and broke older agents that treat the first frame as TLS.
 		h.pumpPair(existing.conn, conn)
 		return
 	}
@@ -150,6 +155,7 @@ func pump(dst, src *websocket.Conn, maxBytes int64, onBytes func(n int64)) {
 		if onBytes != nil {
 			onBytes(int64(len(data)))
 		}
+		// maxBytes is per direction (this goroutine), not a session sum (C2).
 		if maxBytes > 0 && n > maxBytes {
 			return
 		}

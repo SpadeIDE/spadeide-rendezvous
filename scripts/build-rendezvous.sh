@@ -19,6 +19,8 @@
 #   scp dist/rendezvous/spade-rendezvous-linux-amd64.tar.gz user@host:
 #   tar xzf spade-rendezvous-linux-amd64.tar.gz && cd spade-rendezvous-linux-amd64
 #   sudo ./install.sh
+# Upgrade:
+#   sudo ./reinstall.sh
 
 set -euo pipefail
 
@@ -68,14 +70,24 @@ pack_tar() {
   mkdir -p "$stage/$name"
   install -m 0755 "$bin" "$stage/$name/spade-rendezvous"
   install -m 0755 "$PKG/install.sh" "$stage/$name/install.sh"
+  install -m 0755 "$PKG/reinstall.sh" "$stage/$name/reinstall.sh"
   install -m 0644 "$PKG/spade-rendezvous.service" "$stage/$name/spade-rendezvous.service"
   install -m 0644 "$PKG/env.example" "$stage/$name/env.example"
+  install -m 0644 "$PKG/notice.example.json" "$stage/$name/notice.example.json"
   cat >"$stage/$name/README.txt" <<EOF
 SpadeIDE rendezvous $VERSION (linux/$goarch)
 
+First-time install:
   sudo ./install.sh
   sudo nano /etc/spade-rendezvous/env   # set SPADE_RV_DOMAIN + ACME email
   sudo systemctl enable --now spade-rendezvous
+
+Upgrade (keeps env, ACME cache, notice.json):
+  sudo ./reinstall.sh
+
+Operator notice (/etc/spade-rendezvous/notice.json):
+  set "enabled": true  to broadcast (hot-reload, no restart)
+  set "enabled": false to silence
 
 Local smoke (no ACME):
   SPADE_RV_DEV_INSECURE=1 SPADE_RV_LISTEN=:8443 SPADE_RV_DOMAIN=localhost \\

@@ -1,4 +1,4 @@
-.PHONY: help build rendezvous linux linux-amd linux-arm release test fuzz vuln clean
+.PHONY: help build rendezvous linux linux-amd linux-arm release test lint fuzz vuln clean
 
 help:
 	@echo "Targets:"
@@ -7,6 +7,7 @@ help:
 	@echo "  make linux-arm            linux/arm64 only"
 	@echo "  make release              Build + stage github-release/ (VERSION=0.1.0)"
 	@echo "  make test                 go test ./..."
+	@echo "  make lint                 golangci-lint run"
 	@echo "  make fuzz                 Short fuzz on control messages"
 	@echo "  make vuln                 govulncheck"
 	@echo "  make clean                Remove dist/ and github-release/"
@@ -26,6 +27,9 @@ release:
 
 test:
 	cd server && go test ./... -count=1
+
+lint:
+	cd server && golangci-lint run ./...
 
 fuzz:
 	cd server && go test ./internal/signal/ -fuzz=FuzzParseControlMessage -fuzztime=10s

@@ -1,0 +1,11 @@
+{
+  "enabled": false,
+  "id": "example",
+  "title": "Please update SpadeIDE",
+  "body": "A security fix is out. Update the iPad app and the host agent.",
+  "severity": "warning",
+  "belowAppVersion": "",
+  "belowAgentVersion": "",
+  "agentUrl": "https://spadeide.com/download",
+  "appUrl": "https://spadeide.com/download"
+}

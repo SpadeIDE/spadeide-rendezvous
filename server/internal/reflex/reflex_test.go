@@ -12,15 +12,15 @@ func TestEchoObservedAddr(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pc.Close()
+	defer func() { _ = pc.Close() }()
 
-	go func() { _ = ListenAndServe(pc) }()
+	go func() { _ = ListenAndServe(pc, nil) }()
 
 	client, err := net.ListenPacket("udp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	rvAddr := pc.LocalAddr().(*net.UDPAddr)
 	if _, err := client.WriteTo([]byte(MagicPing+"\n"), rvAddr); err != nil {

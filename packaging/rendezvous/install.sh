@@ -69,9 +69,11 @@ BIN="$(find_binary)" || {
 
 UNIT="$HERE/spade-rendezvous.service"
 ENV_EX="$HERE/env.example"
+NOTICE_EX="$HERE/notice.example.json"
 if [[ ! -f "$UNIT" ]]; then
   UNIT="$HERE/../../packaging/rendezvous/spade-rendezvous.service"
   ENV_EX="$HERE/../../packaging/rendezvous/env.example"
+  NOTICE_EX="$HERE/../../packaging/rendezvous/notice.example.json"
 fi
 
 echo "==> Installing spade-rendezvous from $(basename "$BIN") ($want)"
@@ -98,6 +100,7 @@ SPADE_RV_ACME_EMAIL=ops@example.com
 SPADE_RV_LISTEN=:443
 SPADE_RV_METRICS_LISTEN=127.0.0.1:9090
 SPADE_RV_ACME_CACHE=/var/lib/spade-rendezvous/acme
+SPADE_RV_NOTICE_FILE=/etc/spade-rendezvous/notice.json
 EOF
     chmod 0640 /etc/spade-rendezvous/env
   fi
@@ -105,6 +108,35 @@ EOF
   echo "==> Wrote /etc/spade-rendezvous/env — edit SPADE_RV_DOMAIN before start"
 else
   echo "==> Keeping existing /etc/spade-rendezvous/env"
+  # Older installs may lack the notice path — add it if missing.
+  if ! grep -q '^SPADE_RV_NOTICE_FILE=' /etc/spade-rendezvous/env 2>/dev/null; then
+    printf '\nSPADE_RV_NOTICE_FILE=/etc/spade-rendezvous/notice.json\n' >>/etc/spade-rendezvous/env
+    echo "==> Appended SPADE_RV_NOTICE_FILE to existing env"
+  fi
+fi
+
+if [[ ! -f /etc/spade-rendezvous/notice.json ]]; then
+  if [[ -f "$NOTICE_EX" ]]; then
+    install -m 0644 "$NOTICE_EX" /etc/spade-rendezvous/notice.json
+  else
+    cat >/etc/spade-rendezvous/notice.json <<'EOF'
+{
+  "enabled": false,
+  "id": "example",
+  "title": "Please update SpadeIDE",
+  "body": "A security fix is out. Update the iPad app and the host agent.",
+  "severity": "warning",
+  "belowAppVersion": "",
+  "belowAgentVersion": "",
+  "agentUrl": "https://spadeide.com/download",
+  "appUrl": "https://spadeide.com/download"
+}
+EOF
+    chmod 0644 /etc/spade-rendezvous/notice.json
+  fi
+  echo "==> Wrote /etc/spade-rendezvous/notice.json (enabled: false — edit to announce)"
+else
+  echo "==> Keeping existing /etc/spade-rendezvous/notice.json"
 fi
 
 # Patch User= in unit to match --user-name

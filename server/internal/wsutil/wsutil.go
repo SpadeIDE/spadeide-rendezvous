@@ -2,6 +2,7 @@
 package wsutil
 
 import (
+	"net"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -25,4 +26,15 @@ func Upgrader() websocket.Upgrader {
 			return r.Header.Get("Origin") == ""
 		},
 	}
+}
+
+// ClientIP returns the remote host from r.RemoteAddr only.
+// The server terminates TLS itself (autocert) and sits behind no proxy, so
+// honouring X-Forwarded-For would make every rate limit and ban spoofable.
+func ClientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }

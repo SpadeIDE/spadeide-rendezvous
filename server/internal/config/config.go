@@ -11,8 +11,9 @@ import (
 
 // Default session caps — finite on purpose. Operators who need more set env
 // explicitly; 0 for bytes still means unlimited (documented escape hatch).
+// SessionMaxBytes is per direction (each relay pump goroutine), not a session total (C2).
 const (
-	DefaultSessionMaxBytes = int64(512 << 20) // 512 MiB
+	DefaultSessionMaxBytes = int64(512 << 20) // 512 MiB per direction
 	DefaultSessionMaxSecs  = 8 * 3600         // 8 hours
 )
 
@@ -29,9 +30,14 @@ type Config struct {
 	SessionMaxSecs  int
 	MaxAgentsPerIP  int
 	LookupsPerMin   int
+	AgentPerMin     int
+	ReflexPerMin    int
 	LogLevel        string
 	DevInsecureTLS  bool // self-signed for local smoke (no ACME)
 	Version         string
+	// NoticeFile is the JSON path for an operator announcement (hot-reloaded).
+	// Default: /etc/spade-rendezvous/notice.json. Show/hide via "enabled" in the file.
+	NoticeFile string
 }
 
 func FromEnv() (*Config, error) {
@@ -55,6 +61,14 @@ func FromEnv() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	agentPerMin, err := intEnv("SPADE_RV_RATE_AGENT_PER_MIN", 30)
+	if err != nil {
+		return nil, err
+	}
+	reflexPerMin, err := intEnv("SPADE_RV_RATE_REFLEX_PER_MIN", 120)
+	if err != nil {
+		return nil, err
+	}
 
 	c := &Config{
 		Domain:          os.Getenv("SPADE_RV_DOMAIN"),
@@ -68,8 +82,11 @@ func FromEnv() (*Config, error) {
 		SessionMaxSecs:  sessionSecs,
 		MaxAgentsPerIP:  maxAgents,
 		LookupsPerMin:   lookups,
+		AgentPerMin:     agentPerMin,
+		ReflexPerMin:    reflexPerMin,
 		LogLevel:        envOr("SPADE_RV_LOG_LEVEL", "info"),
 		DevInsecureTLS:  os.Getenv("SPADE_RV_DEV_INSECURE") == "1",
+		NoticeFile:      envOr("SPADE_RV_NOTICE_FILE", "/etc/spade-rendezvous/notice.json"),
 	}
 	if err := c.Validate(); err != nil {
 		return nil, err
@@ -93,8 +110,15 @@ func (c *Config) Validate() error {
 	if c.MaxAgentsPerIP < 0 {
 		return fmt.Errorf("SPADE_RV_MAX_AGENTS_PER_IP must be >= 0")
 	}
+	// 0 = unlimited (A9). Negative rejected.
 	if c.LookupsPerMin < 0 {
-		return fmt.Errorf("SPADE_RV_RATE_LOOKUPS_PER_MIN must be >= 0")
+		return fmt.Errorf("SPADE_RV_RATE_LOOKUPS_PER_MIN must be >= 0 (0 = unlimited)")
+	}
+	if c.AgentPerMin < 0 {
+		return fmt.Errorf("SPADE_RV_RATE_AGENT_PER_MIN must be >= 0 (0 = unlimited)")
+	}
+	if c.ReflexPerMin < 0 {
+		return fmt.Errorf("SPADE_RV_RATE_REFLEX_PER_MIN must be >= 0 (0 = unlimited)")
 	}
 	if err := assertLoopbackMetrics(c.MetricsListen); err != nil {
 		return err

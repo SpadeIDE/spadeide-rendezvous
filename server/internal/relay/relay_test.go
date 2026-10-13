@@ -37,11 +37,14 @@ func TestHubPreservesEarlyBytes(t *testing.T) {
 
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/?sid=test"
 
-	clientA, _, err := websocket.DefaultDialer.Dial(wsURL+"&role=agent", nil)
+	clientA, respA, err := websocket.DefaultDialer.Dial(wsURL+"&role=agent", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer clientA.Close()
+	if respA != nil && respA.Body != nil {
+		_ = respA.Body.Close()
+	}
+	defer func() { _ = clientA.Close() }()
 
 	hello := []byte{0x16, 0x03, 0x03, 0x00, 0x05, 'H', 'E', 'L', 'L', 'O'}
 	if err := clientA.WriteMessage(websocket.BinaryMessage, hello); err != nil {
@@ -50,11 +53,14 @@ func TestHubPreservesEarlyBytes(t *testing.T) {
 	// Let the frame sit unread on the hub side (first arriver).
 	time.Sleep(50 * time.Millisecond)
 
-	clientB, _, err := websocket.DefaultDialer.Dial(wsURL+"&role=client", nil)
+	clientB, respB, err := websocket.DefaultDialer.Dial(wsURL+"&role=client", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer clientB.Close()
+	if respB != nil && respB.Body != nil {
+		_ = respB.Body.Close()
+	}
+	defer func() { _ = clientB.Close() }()
 
 	_ = clientB.SetReadDeadline(time.Now().Add(2 * time.Second))
 	mt, data, err := clientB.ReadMessage()
@@ -68,7 +74,7 @@ func TestHubPreservesEarlyBytes(t *testing.T) {
 		t.Fatalf("got %q want %q", data, hello)
 	}
 
-	clientA.Close()
-	clientB.Close()
+	_ = clientA.Close()
+	_ = clientB.Close()
 	wg.Wait()
 }
